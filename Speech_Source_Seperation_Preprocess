@@ -1,0 +1,49 @@
+import os
+import torchaudio
+import numpy as np
+
+# Set the path to the LibriSpeech dataset
+data_path = 'path_to_librispeech_dataset'
+
+# Function to load audio files and extract features
+def load_and_preprocess_data(data_path):
+    audio_data = []
+    labels = []
+    speakers = {}
+    current_speaker_id = 0
+    
+    for root, dirs, files in os.walk(data_path):
+        for file in files:
+            if file.endswith('.flac'):  # Adjust the file extension as per the dataset
+                file_path = os.path.join(root, file)
+                speaker = root.split('/')[-2]  # Extract speaker ID from the directory structure
+
+                # Create speaker ID mapping
+                if speaker not in speakers:
+                    speakers[speaker] = current_speaker_id
+                    current_speaker_id += 1
+
+                # Load the audio and resample to a fixed sample rate
+                waveform, sample_rate = torchaudio.load(file_path)
+                resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)  # Change the new_freq if needed
+                waveform = resampler(waveform)
+                
+                # Extract features (for example, using Mel-frequency cepstral coefficients - MFCCs)
+                mfcc = torchaudio.transforms.MFCC()(waveform)
+                mfcc = mfcc.detach().numpy()  # Convert to numpy array
+
+                audio_data.append(mfcc)
+                labels.append(speakers[speaker])  # Use speaker ID as the label
+
+    # Convert lists to numpy arrays
+    audio_data = np.array(audio_data)
+    labels = np.array(labels)
+
+    return audio_data, labels
+
+# Load and preprocess the data
+X, y = load_and_preprocess_data(data_path)
+
+# Print the shape of the data
+print("Shape of audio data:", X.shape)
+print("Shape of labels:", y.shape)
