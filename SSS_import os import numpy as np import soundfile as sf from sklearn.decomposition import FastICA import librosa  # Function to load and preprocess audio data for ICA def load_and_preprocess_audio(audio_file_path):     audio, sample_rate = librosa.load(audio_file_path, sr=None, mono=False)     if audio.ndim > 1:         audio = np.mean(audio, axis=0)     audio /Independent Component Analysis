@@ -1,0 +1,49 @@
+import os
+import numpy as np
+import soundfile as sf
+from sklearn.decomposition import FastICA
+import librosa
+
+# Function to load and preprocess audio data for ICA
+def load_and_preprocess_audio(audio_file_path):
+    audio, sample_rate = librosa.load(audio_file_path, sr=None, mono=False)
+    if audio.ndim > 1:
+        audio = np.mean(audio, axis=0)
+    audio /= np.max(np.abs(audio))
+    return audio, sample_rate
+
+# Define the path to the LibriSpeech dataset (change it according to your directory)
+librispeech_path = 'D:/Dataset/Libri_Speech_dataset'
+
+# Function to get paths to all audio files in the LibriSpeech dataset
+def get_audio_files(dataset_path):
+    audio_files = []
+    for root, dirs, files in os.walk(dataset_path):
+        for file in files:
+            if file.endswith('.flac'):
+                audio_files.append(os.path.join(root, file))
+    return audio_files
+
+# Get paths to all audio files in the LibriSpeech dataset
+audio_files = get_audio_files(librispeech_path)
+
+# Load, preprocess, and mix audio data
+all_audio = []
+for audio_file in audio_files:
+    audio, sample_rate = load_and_preprocess_audio(audio_file)
+    all_audio.append(audio)
+
+mixed_audio = np.array(all_audio)
+A = np.random.rand(len(audio_files), len(audio_files))
+mixed_audio = np.dot(A, mixed_audio)
+
+# Save the mixed audio (for illustration purposes)
+sf.write('mixed_audio.wav', mixed_audio.T, sample_rate)
+
+# Perform ICA on the mixed audio data to separate the sources
+ica = FastICA(n_components=len(audio_files))
+separated_sources = ica.fit_transform(mixed_audio.T).T
+
+# Save the separated sources to audio files 
+for i, source in enumerate(separated_sources):
+    sf.write(f'separated_source_{i + 1}.wav', source, sample_rate)
